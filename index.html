@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Yuvi Guess Your Killer V2</title>
+<style>
+:root {
+  --pink0:#fff8fc;
+  --pink1:#ffe5f1;
+  --pink2:#ffc9df;
+  --pink3:#ff98c1;
+  --pink4:#ed5a9d;
+  --berry:#a93c70;
+  --cream:#fffdfd;
+}
+* { box-sizing:border-box; }
+html,body {
+  margin:0;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  background:transparent;
+  font-family:"Arial Rounded MT Bold","Trebuchet MS",Arial,sans-serif;
+}
+body {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:8px;
+}
+.widget {
+  position:relative;
+  width:min(790px,98vw);
+  opacity:1;
+  transform:translateY(0) scale(1);
+  transition:opacity .35s ease, transform .35s ease;
+  filter:drop-shadow(0 8px 15px rgba(142,46,92,.2));
+  user-select:none;
+}
+.widget.hidden {
+  opacity:0;
+  transform:translateY(6px) scale(.985);
+  pointer-events:none;
+}
+.title {
+  position:relative;
+  z-index:8;
+  width:max-content;
+  max-width:94%;
+  margin:0 auto -9px;
+  padding:8px 24px 9px;
+  border-radius:999px;
+  color:var(--berry);
+  background:
+    radial-gradient(circle at 12% 30%,#fff 0 2px,transparent 3px),
+    radial-gradient(circle at 88% 32%,#fff 0 2px,transparent 3px),
+    linear-gradient(180deg,#fff,var(--pink1));
+  border:3px solid #fff;
+  outline:2px solid var(--pink3);
+  font-size:clamp(15px,2.5vw,23px);
+  letter-spacing:.5px;
+  text-align:center;
+  white-space:nowrap;
+  box-shadow:0 3px 0 rgba(237,90,157,.13);
+}
+.machine {
+  position:relative;
+  height:96px;
+  padding:15px 13px 14px;
+  border-radius:27px;
+  border:4px solid #fff;
+  outline:3px solid var(--pink3);
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 8% 22%,rgba(255,255,255,.95) 0 2px,transparent 3px),
+    radial-gradient(circle at 22% 76%,rgba(255,255,255,.75) 0 2px,transparent 3px),
+    radial-gradient(circle at 78% 24%,rgba(255,255,255,.85) 0 2px,transparent 3px),
+    radial-gradient(circle at 92% 72%,rgba(255,255,255,.9) 0 2px,transparent 3px),
+    linear-gradient(180deg,var(--pink1),var(--pink2));
+}
+.machine::before,
+.machine::after {
+  content:"";
+  position:absolute;
+  top:5px;
+  bottom:5px;
+  width:16px;
+  border-radius:12px;
+  background:
+    radial-gradient(circle,#fff 0 3px,transparent 4px) 0 0/12px 12px;
+  opacity:.85;
+}
+.machine::before { left:5px; }
+.machine::after { right:5px; }
+.viewport {
+  position:relative;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  border-radius:16px;
+  border:2px solid rgba(255,255,255,.95);
+  background:rgba(255,255,255,.44);
+  box-shadow:inset 0 0 16px rgba(236,100,159,.1);
+}
+.track {
+  position:absolute;
+  top:9px;
+  left:0;
+  display:flex;
+  gap:9px;
+  height:50px;
+  will-change:transform;
+  transform:translateX(0);
+}
+.card {
+  flex:0 0 137px;
+  height:50px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0 9px;
+  border-radius:15px;
+  border:2px solid #fff;
+  outline:1px solid var(--pink3);
+  color:var(--berry);
+  background:
+    linear-gradient(180deg,#fff 0%,#fff8fc 58%,#ffe1ef 100%);
+  box-shadow:
+    inset 0 -5px 0 rgba(255,152,193,.18),
+    0 2px 4px rgba(169,60,112,.08);
+  font-size:15px;
+  line-height:1.05;
+  text-align:center;
+}
+.pointer {
+  position:absolute;
+  left:50%;
+  bottom:0;
+  z-index:9;
+  transform:translateX(-50%);
+  font-size:29px;
+  line-height:1;
+  filter:drop-shadow(0 2px 1px #fff);
+}
+.pointer::before {
+  content:"";
+  position:absolute;
+  left:50%;
+  top:-11px;
+  width:3px;
+  height:14px;
+  transform:translateX(-50%);
+  border-radius:4px;
+  background:var(--pink4);
+}
+.floaty {
+  position:absolute;
+  z-index:10;
+  font-size:16px;
+  pointer-events:none;
+  opacity:.8;
+  animation:float 2.8s ease-in-out infinite;
+}
+.f1 { left:3%; top:4px; animation-delay:.1s; }
+.f2 { right:4%; top:8px; animation-delay:.8s; }
+.f3 { left:17%; bottom:1px; animation-delay:1.3s; font-size:13px; }
+.f4 { right:18%; bottom:2px; animation-delay:.45s; font-size:13px; }
+@keyframes float {
+  0%,100% { transform:translateY(0) rotate(-4deg); }
+  50% { transform:translateY(-5px) rotate(4deg); }
+}
+@keyframes bob {
+  0%,100% { transform:translateX(-50%) translateY(0) rotate(-5deg); }
+  50% { transform:translateX(-50%) translateY(-4px) rotate(5deg); }
+}
+.spinning .pointer { animation:bob .25s ease-in-out infinite; }
+.winner {
+  position:absolute;
+  inset:0;
+  z-index:12;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  opacity:0;
+  pointer-events:none;
+  color:#fff;
+  background:
+    radial-gradient(circle at 20% 40%,rgba(255,255,255,.25) 0 3px,transparent 4px),
+    radial-gradient(circle at 80% 35%,rgba(255,255,255,.3) 0 3px,transparent 4px),
+    linear-gradient(90deg,rgba(233,75,149,.96),rgba(255,137,187,.97));
+  font-size:clamp(21px,4vw,35px);
+  letter-spacing:.8px;
+  text-shadow:0 2px 0 rgba(126,39,82,.22);
+  transition:opacity .25s ease;
+}
+.winner.show { opacity:1; }
+.sparkles {
+  position:absolute;
+  inset:0;
+  z-index:14;
+  pointer-events:none;
+  overflow:hidden;
+}
+.spark {
+  position:absolute;
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:#fff;
+  box-shadow:0 0 8px #fff;
+  opacity:0;
+  animation:pop 850ms ease-out forwards;
+}
+@keyframes pop {
+  0% { opacity:0; transform:translate(0,0) scale(.2); }
+  25% { opacity:1; }
+  100% { opacity:0; transform:translate(var(--dx),var(--dy)) scale(1.1); }
+}
+.hint {
+  margin-top:8px;
+  color:#a3547b;
+  font:12px Arial,sans-serif;
+  text-align:center;
+  opacity:.78;
+}
+</style>
+</head>
+<body>
+<main class="widget" id="widget">
+  <span class="floaty f1">🍓</span>
+  <span class="floaty f2">💗</span>
+  <span class="floaty f3">✨</span>
+  <span class="floaty f4">✨</span>
+
+  <div class="title">🍓 FOLLOW = GUESS YOUR KILLER 🍓</div>
+
+  <section class="machine">
+    <div class="viewport">
+      <div class="track" id="track"></div>
+      <div class="winner" id="winner"></div>
+      <div class="sparkles" id="sparkles"></div>
+    </div>
+    <div class="pointer">🍓</div>
+  </section>
+
+  <div class="hint">Click the widget or press Space to test-spin</div>
+</main>
+
+<script>
+const killers = ["Trapper", "Wraith", "Hillbilly", "Nurse", "Shape", "Hag", "Doctor", "Huntress", "Cannibal", "Nightmare", "Pig", "Clown", "Spirit", "Legion", "Plague", "Ghost Face", "Demogorgon", "Oni", "Deathslinger", "Executioner", "Blight", "Twins", "Trickster", "Nemesis", "Cenobite", "Artist", "Onryō", "Dredge", "Mastermind", "Knight", "Skull Merchant", "Singularity", "Xenomorph", "Good Guy", "Unknown", "Lich", "Dark Lord", "Houndmaster", "Ghoul", "Springtrap", "Krasue", "First", "Jason"];
+const widget = document.getElementById("widget");
+const track = document.getElementById("track");
+const winner = document.getElementById("winner");
+const sparkles = document.getElementById("sparkles");
+
+const CARD = 137;
+const GAP = 9;
+const STEP = CARD + GAP;
+let spinning = false;
+
+function makeCard(name) {
+  const card = document.createElement("div");
+  card.className = "card";
+  card.textContent = name;
+  return card;
+}
+
+function fillTrack() {
+  track.innerHTML = "";
+  for (let set = 0; set < 7; set++) {
+    killers.forEach(name => track.appendChild(makeCard(name)));
+  }
+}
+fillTrack();
+
+function sparkleBurst() {
+  sparkles.innerHTML = "";
+  for (let i = 0; i < 26; i++) {
+    const dot = document.createElement("span");
+    dot.className = "spark";
+    dot.style.left = (42 + Math.random() * 16) + "%";
+    dot.style.top = (35 + Math.random() * 30) + "%";
+    dot.style.setProperty("--dx", ((Math.random() - .5) * 230) + "px");
+    dot.style.setProperty("--dy", ((Math.random() - .5) * 95) + "px");
+    dot.style.animationDelay = (Math.random() * 150) + "ms";
+    sparkles.appendChild(dot);
+  }
+}
+
+function showWidget() {
+  widget.classList.remove("hidden");
+}
+
+function hideWidget() {
+  widget.classList.add("hidden");
+}
+
+function spin() {
+  if (spinning) return;
+  spinning = true;
+  showWidget();
+  winner.classList.remove("show");
+  widget.classList.add("spinning");
+
+  const chosen = Math.floor(Math.random() * killers.length);
+  const chosenName = killers[chosen];
+  const repeatedIndex = killers.length * 5 + chosen;
+
+  const viewportWidth = document.querySelector(".viewport").clientWidth;
+  const centered = viewportWidth / 2 - CARD / 2;
+  const finalX = centered - repeatedIndex * STEP;
+
+  track.style.transition = "none";
+  track.style.transform = "translateX(0px)";
+  void track.offsetWidth;
+
+  track.style.transition = "transform 5s cubic-bezier(.08,.72,.06,1)";
+  track.style.transform = `translateX(${finalX}px)`;
+
+  setTimeout(() => {
+    widget.classList.remove("spinning");
+    winner.textContent = "🍓 " + chosenName.toUpperCase() + " 🍓";
+    winner.classList.add("show");
+    sparkleBurst();
+
+    setTimeout(() => {
+      winner.classList.remove("show");
+      spinning = false;
+    }, 2800);
+  }, 5100);
+}
+
+widget.addEventListener("click", spin);
+window.addEventListener("keydown", e => {
+  if (e.code === "Space") {
+    e.preventDefault();
+    spin();
+  }
+});
+
+// Hooks for later use with TikFinity or another trigger.
+window.yuviSpin = spin;
+window.yuviShow = showWidget;
+window.yuviHide = hideWidget;
+</script>
+</body>
+</html>
