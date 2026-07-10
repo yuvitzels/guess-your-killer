@@ -227,7 +227,7 @@ body {
 </style>
 </head>
 <body>
-<main class="widget" id="widget">
+<main class="widget hidden" id="widget">
   <span class="floaty f1">🍓</span>
   <span class="floaty f2">💗</span>
   <span class="floaty f3">✨</span>
@@ -244,7 +244,7 @@ body {
     <div class="pointer">🍓</div>
   </section>
 
-  <div class="hint">Click the widget or press Space to test-spin</div>
+  <div class="hint" id="status">Connecting to TikFinity…</div>
 </main>
 
 <script>
@@ -331,16 +331,132 @@ function spin() {
   }, 5100);
 }
 
-widget.addEventListener("click", spin);
+const statusEl = document.getElementById("status");
+const params = new URLSearchParams(window.location.search);
+const setupMode = params.get("setup") === "1";
+let websocket = null;
+let reconnectTimer = null;
+let queuedSpins = 0;
+
+function setStatus(message) {
+  statusEl.textContent = message;
+}
+
+function runOrQueueSpin() {
+  if (spinning) {
+    queuedSpins++;
+    return;
+  }
+  spin();
+}
+
+function finishAndHide() {
+  setTimeout(() => {
+    hideWidget();
+
+    if (queuedSpins > 0) {
+      queuedSpins--;
+      setTimeout(() => runOrQueueSpin(), 450);
+    }
+  }, 650);
+}
+
+// Keep the original spin behavior, but fade away afterward.
+const originalSpin = spin;
+spin = function () {
+  if (spinning) {
+    queuedSpins++;
+    return;
+  }
+
+  originalSpin();
+
+  // Winner appears at about 5.1 seconds and stays for 2.8 seconds.
+  setTimeout(finishAndHide, 7900);
+};
+
+function isFollowEvent(payload) {
+  const eventName = String(
+    payload?.event ??
+    payload?.type ??
+    payload?.eventType ??
+    ""
+  ).toLowerCase();
+
+  return eventName === "follow" ||
+         eventName === "followevent" ||
+         eventName.includes("follow");
+}
+
+function connectTikFinity() {
+  if (websocket &&
+      (websocket.readyState === WebSocket.OPEN ||
+       websocket.readyState === WebSocket.CONNECTING)) {
+    return;
+  }
+
+  clearTimeout(reconnectTimer);
+  setStatus("Connecting to TikFinity…");
+
+  try {
+    websocket = new WebSocket("ws://localhost:21213/");
+  } catch (error) {
+    setStatus("TikFinity connection failed");
+    reconnectTimer = setTimeout(connectTikFinity, 1500);
+    return;
+  }
+
+  websocket.onopen = () => {
+    setStatus("TikFinity connected ✓");
+  };
+
+  websocket.onmessage = event => {
+    try {
+      const payload = JSON.parse(event.data);
+      console.log("TikFinity event:", payload);
+
+      if (isFollowEvent(payload)) {
+        runOrQueueSpin();
+      }
+    } catch (error) {
+      console.warn("Could not read TikFinity event:", error);
+    }
+  };
+
+  websocket.onclose = () => {
+    websocket = null;
+    setStatus("TikFinity disconnected — retrying…");
+    reconnectTimer = setTimeout(connectTikFinity, 1500);
+  };
+
+  websocket.onerror = () => {
+    setStatus("TikFinity connection failed — retrying…");
+    try { websocket.close(); } catch (_) {}
+  };
+}
+
+// Setup URL: add ?setup=1 so the widget stays visible while positioning it.
+if (setupMode) {
+  showWidget();
+  setStatus("SETUP MODE — click or press Space to test");
+} else {
+  hideWidget();
+}
+
+widget.addEventListener("click", () => {
+  if (setupMode) runOrQueueSpin();
+});
+
 window.addEventListener("keydown", e => {
   if (e.code === "Space") {
     e.preventDefault();
-    spin();
+    runOrQueueSpin();
   }
 });
 
-// Hooks for later use with TikFinity or another trigger.
-window.yuviSpin = spin;
+window.addEventListener("load", connectTikFinity);
+
+window.yuviSpin = runOrQueueSpin;
 window.yuviShow = showWidget;
 window.yuviHide = hideWidget;
 </script>
