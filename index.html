@@ -43,6 +43,25 @@ body {
   transform:translateY(6px) scale(.985);
   pointer-events:none;
 }
+
+.username {
+  margin: 0 auto 8px;
+  width: max-content;
+  max-width: 92%;
+  padding: 6px 18px;
+  border-radius: 999px;
+  color: var(--berry);
+  background: linear-gradient(180deg, #fff, var(--pink1));
+  border: 3px solid #fff;
+  outline: 2px solid var(--pink3);
+  font-size: clamp(17px, 3vw, 26px);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 3px 0 rgba(237,90,157,.13);
+}
+
 .machine {
   position:relative;
   height:82px;
@@ -207,6 +226,7 @@ body {
 </head>
 <body>
 <main class="widget hidden" id="widget">
+  <div class="username" id="username">@viewer</div>
   <span class="floaty f1">🍓</span>
   <span class="floaty f2">💗</span>
   <span class="floaty f3">✨</span>
@@ -226,6 +246,7 @@ body {
 <script>
 const killers = ["Trapper", "Wraith", "Hillbilly", "Nurse", "Shape", "Hag", "Doctor", "Huntress", "Cannibal", "Nightmare", "Pig", "Clown", "Spirit", "Legion", "Plague", "Ghost Face", "Demogorgon", "Oni", "Deathslinger", "Executioner", "Blight", "Twins", "Trickster", "Nemesis", "Cenobite", "Artist", "Onryō", "Dredge", "Mastermind", "Knight", "Skull Merchant", "Singularity", "Xenomorph", "Good Guy", "Unknown", "Lich", "Dark Lord", "Houndmaster", "Ghoul", "Springtrap", "Krasue", "First", "Jason"];
 const widget = document.getElementById("widget");
+const usernameEl = document.getElementById("username");
 const track = document.getElementById("track");
 const winner = document.getElementById("winner");
 const sparkles = document.getElementById("sparkles");
@@ -312,17 +333,26 @@ const params = new URLSearchParams(window.location.search);
 const setupMode = params.get("setup") === "1";
 let websocket = null;
 let reconnectTimer = null;
-let queuedSpins = 0;
+let queuedFollowers = [];
 
 function setStatus(message) {
   statusEl.textContent = message;
 }
 
-function runOrQueueSpin() {
+function normalizeUsername(value) {
+  const clean = String(value || "viewer").trim().replace(/^@+/, "");
+  return clean || "viewer";
+}
+
+function runOrQueueSpin(username = "viewer") {
+  const cleanName = normalizeUsername(username);
+
   if (spinning) {
-    queuedSpins++;
+    queuedFollowers.push(cleanName);
     return;
   }
+
+  usernameEl.textContent = "@" + cleanName;
   spin();
 }
 
@@ -330,9 +360,9 @@ function finishAndHide() {
   setTimeout(() => {
     hideWidget();
 
-    if (queuedSpins > 0) {
-      queuedSpins--;
-      setTimeout(() => runOrQueueSpin(), 450);
+    if (queuedFollowers.length > 0) {
+      const nextFollower = queuedFollowers.shift();
+      setTimeout(() => runOrQueueSpin(nextFollower), 450);
     }
   }, 650);
 }
@@ -340,10 +370,7 @@ function finishAndHide() {
 // Keep the original spin behavior, but fade away afterward.
 const originalSpin = spin;
 spin = function () {
-  if (spinning) {
-    queuedSpins++;
-    return;
-  }
+  if (spinning) return;
 
   originalSpin();
 
@@ -392,7 +419,14 @@ function connectTikFinity() {
       console.log("TikFinity event:", payload);
 
       if (isFollowEvent(payload)) {
-        runOrQueueSpin();
+        const followerName =
+          payload?.data?.uniqueId ??
+          payload?.data?.nickname ??
+          payload?.uniqueId ??
+          payload?.nickname ??
+          "viewer";
+
+        runOrQueueSpin(followerName);
       }
     } catch (error) {
       console.warn("Could not read TikFinity event:", error);
@@ -414,28 +448,28 @@ function connectTikFinity() {
 // Setup URL: add ?setup=1 so the widget stays visible while positioning it.
 if (setupMode) {
   showWidget();
+  usernameEl.textContent = "@testviewer";
   setStatus("SETUP MODE — click or press Space to test");
 } else {
   hideWidget();
 }
 
 widget.addEventListener("click", () => {
-  if (setupMode) runOrQueueSpin();
+  if (setupMode) runOrQueueSpin("testviewer");
 });
 
 window.addEventListener("keydown", e => {
   if (e.code === "Space") {
     e.preventDefault();
-    runOrQueueSpin();
+    runOrQueueSpin("testviewer");
   }
 });
 
 window.addEventListener("load", connectTikFinity);
 
-window.yuviSpin = runOrQueueSpin;
+window.yuviSpin = (username = "viewer") => runOrQueueSpin(username);
 window.yuviShow = showWidget;
 window.yuviHide = hideWidget;
 </script>
 </body>
 </html>
-
